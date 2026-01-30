@@ -1,6 +1,8 @@
 import json
 from pathlib import Path
 
+import pytest
+
 from nrsr_attendance.site_data import build_club_keys, build_site_data, slugify
 
 
@@ -162,3 +164,40 @@ def test_build_site_data_writes_manifest_and_term_overviews(tmp_path: Path):
     assert overview9["term_id"] == 9
     assert overview9["clubs"][0]["club_key"] == "no-club"
     assert (out_dir / "term" / "9" / "votes.json").exists()
+
+
+def test_build_site_data_errors_on_missing_metadata(tmp_path: Path):
+    processed = tmp_path / "processed"
+    processed.mkdir()
+
+    with pytest.raises(FileNotFoundError, match="metadata.json"):
+        build_site_data(processed, tmp_path / "out")
+
+
+def test_build_site_data_errors_on_empty_terms(tmp_path: Path):
+    processed = tmp_path / "processed"
+    processed.mkdir()
+
+    (processed / "metadata.json").write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "last_updated_utc": "2026-01-24T00:00:00+00:00",
+                "raw_vote_files": 0,
+                "votes_rows": 0,
+                "mp_votes_rows": 0,
+            },
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    (processed / "mp_attendance.jsonl").write_text("", encoding="utf-8")
+    (processed / "club_attendance.jsonl").write_text("", encoding="utf-8")
+    (processed / "votes.jsonl").write_text("", encoding="utf-8")
+
+    with pytest.raises(ValueError, match="No term_id values found"):
+        build_site_data(processed, tmp_path / "out")
