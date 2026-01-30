@@ -60,3 +60,11 @@ def test_pipeline_does_not_overwrite_unless_force(tmp_path: Path, monkeypatch: p
     overwritten = vote_path.read_text(encoding="utf-8")
     assert overwritten != before
     assert json.loads(overwritten)["payload"]["v"] == 3
+
+
+def test_pipeline_rejects_invalid_vote_id(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr(pipelines, "_repo_root", lambda: tmp_path)
+
+    pipeline = RawJsonPipeline()
+    with pytest.raises(ValueError, match="Invalid vote_id"):
+        pipeline.process_item({"kind": "vote", "vote_id": "abc"})

@@ -7,6 +7,24 @@ import nrsr_attendance.pipelines as pipelines
 import pytest
 
 
+@pytest.mark.parametrize(
+    ("item", "expected"),
+    [
+        ({"kind": "vote_index", "vote_id": 1, "term_id": "x", "meeting_id": 1}, "term_id"),
+        ({"kind": "vote_index", "vote_id": 1, "term_id": 1, "meeting_id": "x"}, "meeting_id"),
+        ({"kind": "vote_index", "vote_id": "x", "term_id": 1, "meeting_id": 1}, "vote_id"),
+    ],
+)
+def test_vote_index_pipeline_rejects_invalid_ids(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, item: dict, expected: str
+):
+    monkeypatch.setattr(pipelines, "_repo_root", lambda: tmp_path)
+
+    p = pipelines.VoteIndexJsonlPipeline()
+    with pytest.raises(ValueError, match=f"Invalid {expected}"):
+        p.process_item(item)
+
+
 def test_vote_index_pipeline_writes_sorted_deduped_shard(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ):
